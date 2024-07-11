@@ -3,7 +3,9 @@ import cv2
 import argparse
 import numpy as np
 from scipy.optimize import least_squares
+
 from Mics.LoadImages import LoadImages
+from Mics.Utils import FindChessBoardCorners
 
 def main():
     Parser = argparse.ArgumentParser()
@@ -13,9 +15,11 @@ def main():
     Args = Parser.parse_args()
     DataPath = Args.DataPath
 
-    gray_scale, original = LoadImages(DataPath)
+    color_images, gray_images, n_images = LoadImages(DataPath)
     
-
+    # Find the chess board corners 
+    FindChessBoardCorners(gray_images=gray_images, color_images=color_images, n_images=n_images)
+    
 
 if __name__ == '__main__':
     main()

@@ -4,7 +4,7 @@ import os
 def LoadImages(Path):
     rgb_images = []
     gray_images = []
-    
+
     for filename in os.listdir(Path):
         img_path = os.path.join(Path, filename)
         img_rgb = cv2.imread(img_path)
@@ -14,6 +14,7 @@ def LoadImages(Path):
             rgb_images.append(img_rgb)
             gray_images.append(img_gray)
 
+    n_images = len(rgb_images)
     print(f"Total images loaded: {len(rgb_images)}")
 
-    return rgb_images, gray_images
+    return rgb_images, gray_images, n_images
