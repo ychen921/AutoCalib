@@ -9,8 +9,8 @@ from Mics.Utils import FindChessBoardCorners
 
 def main():
     Parser = argparse.ArgumentParser()
-    Parser.add_argument('--DataPath',  
-                        default='/home/ychen921/733/hw1/AutoCalib/Data/Calibration_Imgs', help='Default:/home/ychen921/733/hw1/AutoCalib/Data/Calibration_Imgs')
+    Parser.add_argument('--DataPath', default='/home/ychen921/733/hw1/AutoCalib/Data/Calibration_Imgs', 
+                        help='Default:/home/ychen921/733/hw1/AutoCalib/Data/Calibration_Imgs')
     
     Args = Parser.parse_args()
     DataPath = Args.DataPath
@@ -18,7 +18,7 @@ def main():
     color_images, gray_images, n_images = LoadImages(DataPath)
     
     # Find the chess board corners 
-    FindChessBoardCorners(gray_images=gray_images, color_images=color_images, n_images=n_images)
+    H_set, imgpoints, objpoints = FindChessBoardCorners(gray_images=gray_images, color_images=color_images, n_images=n_images)
     
 
 if __name__ == '__main__':
