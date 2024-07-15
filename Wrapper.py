@@ -39,5 +39,8 @@ def main():
         Error = ReprojectionError(img_pts=img_pts, obj_pts=objpoints, R_t=R_t, K_init=Init_K)
         reproj_errors.append(Error)
 
+    print('\n Mean Reprojection Error before Optimization:')
+    print(np.mean(reproj_errors))
+
 if __name__ == '__main__':
     main()
