@@ -53,6 +53,8 @@ def EstimateIntrinsicParameters(H_set):
     Compute two fundamental constraints from homographies,
     if n images of model plane are observed, by stacking n 
     such homogeneour equations in b to sovle Vb = 0.
+    Refer to section 3.1 and Appendix B 
+    https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr98-71.pdf.
     """
     MatrixV = []
     for i in range(len(H_set)):
@@ -94,3 +96,61 @@ def EstimateIntrinsicParameters(H_set):
                   ])
     
     return K
+
+def EstimateExtrinsicMatrix(K_init, H):
+    """
+    Compute Extrinsic Matrix (Rotation and Translation)
+    from initial calibration matrix and homography.
+    Refer to section 3.1 https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr98-71.pdf.
+    """
+    h1 = H[:,0]
+    h2 = H[:,1]
+    h3 = H[:,2]
+
+    # Inversion of K calibration matrix
+    K_t = np.linalg.inv(K_init) 
+
+    lamda_1 = 1. / np.linalg.norm(np.dot(K_t, h1))
+    lamda_2 = 1. / np.linalg.norm(np.dot(K_t, h2))
+    lamba = (lamda_1 + lamda_2) / 2
+
+    # Compute rotation matrix R = [r1, r2, r3]
+    r1 = lamba * np.dot(K_t, h1)
+    r2 = lamba * np.dot(K_t, h2)
+    r3 = np.cross(r1, r2)
+    R = np.array([r1, r2, r3]).T
+
+    # Compute Translation matrix
+    t = lamba * np.dot(K_t, h3)
+
+    # Organize extrinsic matrix 
+    R_t = np.zeros((3,4))
+    R_t[:, :-1] = R
+    R_t[:, -1] = t
+    
+    return R_t
+
+def ReprojectionError(img_pts, obj_pts, R_t, K_init):
+    # Compute reproject error
+    P = np.dot(K_init, R_t)
+
+    ones = np.ones((obj_pts.shape[0],1))
+    zeros = np.zeros(obj_pts.shape)
+    zeros[:, 1] = 1
+    img_pts = img_pts.reshape(-1,2)
+    
+    xs = np.hstack((img_pts, ones))
+    Xs = np.hstack((obj_pts, zeros))
+
+    errors = []
+    for x, X in zip(xs, Xs):
+        x_hat = np.dot(P, X) # Estimated image point
+        x_hat = x_hat / x_hat[2]
+        
+        # L2 error(Euclidean)
+        err = np.linalg.norm(x - x_hat)
+        errors.append(err)
+
+    # Average reprojection error
+    L2_avg = np.sum(errors) / len(errors)
+    return L2_avg
