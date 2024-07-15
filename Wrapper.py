@@ -33,13 +33,16 @@ def main():
     for i in range(n_images):
         H = H_set[i]
         img_pts = imgpoints[i]
+
+        # Compute camera intrinsic
         R_t = EstimateExtrinsicMatrix(K_init=Init_K, H=H)
         Extrinsics.append(R_t)
 
+        # Compute reprojection from camera intrinsic
         Error = ReprojectionError(img_pts=img_pts, obj_pts=objpoints, R_t=R_t, K_init=Init_K)
         reproj_errors.append(Error)
 
-    print('\n Mean Reprojection Error before Optimization:')
+    print('\nMean Reprojection Error before Optimization:')
     print(np.mean(reproj_errors))
 
 if __name__ == '__main__':
