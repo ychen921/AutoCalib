@@ -5,6 +5,8 @@ from Mics.LoadImages import LoadImages
 from Mics.Utils import FindChessBoardCorners, EstimateIntrinsicParameters
 from Mics.Utils import EstimateExtrinsicMatrix, Optimization
 from Mics.Utils import ReprojectionError, ReprojectionErrorDistort
+from Mics.Utils import Visualization
+
 
 def main():
     Parser = argparse.ArgumentParser()
@@ -41,12 +43,12 @@ def main():
         reproj_errors.append(Error)
 
     print('\nMean Reprojection Error before Optimization:')
-    print(np.mean(reproj_errors))
-
-    print('\nOptimizing calibration matrix K by using Levenberg-Marquardt Algorithm...')
+    print(np.mean(reproj_errors), np.std(reproj_errors))
+    
+    print('\n########################################################################')
+    print('Optimizing calibration matrix K by using Levenberg-Marquardt Algorithm...')
+    print('########################################################################')
     K_optim, k1, k2 = Optimization(K=Init_K, H_set=H_set, img_pts=imgpoints, obj_pts=objpoints)
-    print('\nCalibration matrix K after Optimization:')
-    print(K_optim)
 
     reproj_errors = []
     reproj_points = []
@@ -63,6 +65,15 @@ def main():
         reproj_points.append(pts)
     
     print('\nMean Reprojection Error after Optimization:')
-    print(np.mean(reproj_errors))
+    print(np.mean(reproj_errors), np.std(reproj_errors))
+
+    print('\nCalibration matrix K after Optimization:')
+    print(K_optim)
+
+    print("\nDistortion coefficients after optimization are: ")
+    print(k1, k2)
+
+    Visualization(imgpoints=imgpoints, reproj_points=reproj_points, images=color_images)
+
 if __name__ == '__main__':
     main()

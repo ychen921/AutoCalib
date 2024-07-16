@@ -189,6 +189,10 @@ def ReprojectionErrorDistort(img_pts, obj_pts, R_t, K, k1, k2):
     return errors, reproj_pts
         
 def LossFunction(x0, imgpoints, obj_pts, H_set):
+    """
+    Minimized geometric error that solves by
+    Levenberg-Marquardt least squared algorithm.
+    """
     K = np.zeros((3,3))
     K[0,0], K[1,1] = x0[0], x0[1]
     K[0,2], K[1,2] = x0[2], x0[3]
@@ -229,6 +233,11 @@ def LossFunction(x0, imgpoints, obj_pts, H_set):
     return np.float64(errors).flatten()
 
 def Optimization(K, H_set, img_pts, obj_pts):
+    """
+    Estimate the coefficients of the radial distortion by solving the nonlinear 
+    minimization problem, which is solved with the Levenberg-Marquardt Algorithm.
+    Refer to section 3.3 https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/tr98-71.pdf.
+    """
     alpha, beta = K[0, 0], K[1, 1]
     u0, v0 = K[0, 2], K[1, 2]
     gamma = K[0, 1]
@@ -246,3 +255,15 @@ def Optimization(K, H_set, img_pts, obj_pts):
     
     return K_optim, k1, k2
 
+def Visualization(imgpoints, reproj_points, images):
+    for i, (img_pts, reproj_pts, img) in enumerate(zip(imgpoints, reproj_points, images)):
+        img_pts = img_pts.reshape(-1,2)
+
+        for x_, x_hat in  zip(img_pts, reproj_pts):
+            u, v = np.int64(x_)
+            u_hat, v_hat = np.int64(x_hat)
+
+            cv2.rectangle(img, (u-5, v-5),(u+5,v+5), (0, 0, 255),thickness=cv2.FILLED)
+            cv2.rectangle(img, (u_hat-5, v_hat-5), (u_hat+5, v_hat+5), (0, 255, 0), thickness=cv2.FILLED)
+
+        # cv2.imwrite("Figures/output/reproj_{}.jpg".format(i), img)
