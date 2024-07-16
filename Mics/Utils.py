@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import math
+from scipy.optimize import least_squares
 
 def FindChessBoardCorners(gray_images, color_images, n_images): 
     """
@@ -131,7 +132,7 @@ def EstimateExtrinsicMatrix(K_init, H):
     return R_t
 
 def ReprojectionError(img_pts, obj_pts, R_t, K_init):
-    # Compute reproject error
+    # Compute Projection matrix P
     P = np.dot(K_init, R_t)
 
     ones = np.ones((obj_pts.shape[0],1))
@@ -154,3 +155,94 @@ def ReprojectionError(img_pts, obj_pts, R_t, K_init):
     # Average reprojection error
     L2_avg = np.sum(errors) / len(errors)
     return L2_avg
+
+def ReprojectionErrorDistort(img_pts, obj_pts, R_t, K, k1, k2):
+    u0, v0 = K[0, 2], K[1, 2]
+
+    ones = np.ones((obj_pts.shape[0],1))
+    zeros = np.zeros(obj_pts.shape)
+    zeros[:, 1] = 1
+    img_pts = img_pts.reshape(-1,2)
+    
+    xs = np.hstack((img_pts, ones))
+    Xs = np.hstack((obj_pts, zeros))
+
+    errors = []
+    reproj_pts = []
+    for x_, X in zip(xs, Xs):
+        x_hat = np.dot(R_t, X) # Estimated image point
+        x_hat = x_hat / x_hat[2]
+        x, y = x_hat[0], x_hat[1]
+
+        U = np.dot(K, x_hat)
+        U = U / U[2]
+        u, v = U[0], U[1]
+
+        u_cap = u + (u-u0)*(k1*(x**2 + y**2) + k2*(x**2 + y**2)**2)
+        v_cap = v + (v-v0)*(k1*(x**2 + y**2) + k2*(x**2 + y**2)**2)
+
+        error = np.sqrt((x_[0] - u_cap)**2 + (x_[1] - v_cap)**2)
+        
+        reproj_pts.append([u_cap, v_cap])
+        errors.append(error)
+
+    return errors, reproj_pts
+        
+def LossFunction(x0, imgpoints, obj_pts, H_set):
+    K = np.zeros((3,3))
+    K[0,0], K[1,1] = x0[0], x0[1]
+    K[0,2], K[1,2] = x0[2], x0[3]
+    K[0,1], K[2,2] = x0[4], 1
+
+    k1, k2 = x0[5], x0[6]
+    u0, v0 = x0[2], x0[3]
+
+    errors = []
+    for i, H in enumerate(H_set):
+        R_t = EstimateExtrinsicMatrix(K_init=K, H=H)
+        img_pts = imgpoints[i]
+
+        ones = np.ones((obj_pts.shape[0],1))
+        zeros = np.zeros(obj_pts.shape)
+        zeros[:, 1] = 1
+        img_pts = img_pts.reshape(-1,2)
+
+        xs = np.hstack((img_pts, ones))
+        Xs = np.hstack((obj_pts, zeros))
+
+        for x_, X in  zip(xs, Xs):
+            x_hat = np.dot(R_t, X) # Estimated image point
+            x_hat = x_hat / x_hat[2] # Normalized to z axis to 1 by the depth
+            
+            x, y = x_hat[0], x_hat[1]
+
+            U = np.dot(K, x_hat)
+            U = U / U[2]
+            u, v = U[0], U[1]
+
+            u_cap = u + (u-u0)*(k1*(x**2 + y**2) + k2*(x**2 + y**2)**2)
+            v_cap = v + (v-v0)*(k1*(x**2 + y**2) + k2*(x**2 + y**2)**2)
+
+            errors.append(x_[0] - u_cap)
+            errors.append(x_[1] - v_cap)
+
+    return np.float64(errors).flatten()
+
+def Optimization(K, H_set, img_pts, obj_pts):
+    alpha, beta = K[0, 0], K[1, 1]
+    u0, v0 = K[0, 2], K[1, 2]
+    gamma = K[0, 1]
+
+    Initial_K = [alpha, beta, u0, v0, gamma, 0, 0]
+
+    result = least_squares(x0=Initial_K, fun=LossFunction, method='lm',
+                           args=[img_pts, obj_pts, H_set])
+    
+    [alpha, beta, u0, v0, gamma, k1, k2] = result.x
+
+    K_optim = np.array([[alpha, gamma, u0],
+                        [0,     beta,  v0],
+                        [0,     0,     1]])
+    
+    return K_optim, k1, k2
+

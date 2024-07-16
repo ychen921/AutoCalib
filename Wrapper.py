@@ -1,12 +1,10 @@
-import os
-import cv2
 import argparse
 import numpy as np
-from scipy.optimize import least_squares
 
 from Mics.LoadImages import LoadImages
 from Mics.Utils import FindChessBoardCorners, EstimateIntrinsicParameters
-from Mics.Utils import EstimateExtrinsicMatrix, ReprojectionError
+from Mics.Utils import EstimateExtrinsicMatrix, Optimization
+from Mics.Utils import ReprojectionError, ReprojectionErrorDistort
 
 def main():
     Parser = argparse.ArgumentParser()
@@ -45,5 +43,26 @@ def main():
     print('\nMean Reprojection Error before Optimization:')
     print(np.mean(reproj_errors))
 
+    print('\nOptimizing calibration matrix K by using Levenberg-Marquardt Algorithm...')
+    K_optim, k1, k2 = Optimization(K=Init_K, H_set=H_set, img_pts=imgpoints, obj_pts=objpoints)
+    print('\nCalibration matrix K after Optimization:')
+    print(K_optim)
+
+    reproj_errors = []
+    reproj_points = []
+    for i in range(n_images):
+        H = H_set[i]
+        img_pts = imgpoints[i]
+
+        # Compute camera intrinsic
+        R_t = EstimateExtrinsicMatrix(K_init=K_optim, H=H)
+
+        # Compute reprojection from optimized camera intrinsic
+        Error, pts = ReprojectionErrorDistort(img_pts=img_pts, obj_pts=objpoints, R_t=R_t, K=K_optim, k1=k1, k2=k2)
+        reproj_errors.append(Error)
+        reproj_points.append(pts)
+    
+    print('\nMean Reprojection Error after Optimization:')
+    print(np.mean(reproj_errors))
 if __name__ == '__main__':
     main()
